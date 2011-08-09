@@ -1,0 +1,437 @@
+#! /bin/sh
+
+# Copyright (c) 2011, Gediminas Liktaras
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer. 
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+
+#--- CONSTANTS -----------------------------------------------------------------
+
+SUCCESS=0
+FAILURE=1
+
+INITIAL_TEST_FILE="test1"
+INPUT_TEST_EXT="in"
+OUTPUT_TEST_EXT="out"
+TEST_DIR_NAME="tests"
+TEST_SCRIPT_NAME="run.sh"
+
+
+#--- HELPER FUNCTIONS ----------------------------------------------------------
+
+# Print help string.
+function printHelp() {
+    cat <<HELP_STRING
+Usage: tasktemplate LANGUAGE VCS SHORTNAME FULLNAME
+Set up a skeleton for a programming task solution.
+Example: tasktemplate c++ git calfflac "Calfflac"
+
+Options:
+  LANGUAGE  - Programming language to use. Can be c, c++, cpp, python2, python3.
+  VCS       - Version control system to use. Can be git, hg, none.
+  SHORTNAME - Short task name (used for source file names etc).
+  FULLNAME  - Full task name (used for main directory name etc).
+HELP_STRING
+}
+
+# Print usage string.
+function printUsage() {
+    cat <<USAGE_STRING
+Usage: tasktemplate LANGUAGE VCS SHORTNAME FULLNAME
+Try \`tasktemplate --help\` for more information.
+USAGE_STRING
+}
+
+
+#--- PROCESS INPUT -------------------------------------------------------------
+
+# Check if no parameters have been passed.
+if [ "$#" -eq 0 ]; then
+    printUsage
+    exit "$SUCCESS"
+fi
+
+# Check if --help was passed.
+if [ "x$1" == "x--help" ]; then
+    printHelp
+    exit "$SUCCESS"
+fi
+
+
+# Check for a valid amount of parameters.
+if [ "$#" -lt 4 ]; then
+    echo "Expected four parameters."
+    printUsage
+    exit "$FAILURE"
+fi
+
+
+# Get and validate the language parameter.
+language="`echo $1 | tr 'A-Z' 'a-z'`"
+if [ "$language" != "c" -a "$language" != "c++" -a "$language" != "cpp" \
+        -a "$language" != "python2" -a "$language" != "python3" ]; then
+    echo "Invalid language \"$language\" specified."
+    printUsage
+    exit "$FAILURE"
+fi
+
+# Get and validate the vcs parameter.
+vcs="`echo $2 | tr 'A-Z' 'a-z'`"
+if [ "$vcs" != "git" -a "$vcs" != "hg" -a "$vcs" != "none" ]; then
+    echo "Invalid version control system \"$vcs\" specified."
+    printUsage
+    exit "$FAILURE"
+fi
+
+# Get the remaining parameters
+shortName="$3"
+fullName="$4"
+
+
+#--- GENERAL SETUP -------------------------------------------------------------
+
+# Create directories.
+mkdir "$fullName"
+mkdir "$fullName/$TEST_DIR_NAME"
+
+cd "$fullName"
+
+# Create input, output and sample test files.
+touch "./$shortName.$INPUT_TEST_EXT"
+touch "./$shortName.$OUTPUT_TEST_EXT"
+touch "./$TEST_DIR_NAME/$INITIAL_TEST_FILE.$INPUT_TEST_EXT"
+touch "./$TEST_DIR_NAME/$INITIAL_TEST_FILE.$OUTPUT_TEST_EXT"
+
+
+#--- C SETUP -------------------------------------------------------------------
+
+if [ "$language" == "c" ]; then
+
+# Create Makefile
+cat <<MAKEFILE_C > "./Makefile"
+build: $shortName.c
+	gcc -O2 -static -lm -o $shortName $shortName.c
+
+debug: $shortName.c
+	gc -DDEBUG -g -o $shortName $shortName.c
+MAKEFILE_C
+
+# Create c file
+cat <<C_TEMPLATE > "./$shortName.c"
+//
+// $fullName
+//
+
+#include "stdlib.h"
+#include "stdio.h"
+
+using namespace std;
+
+
+int main() {
+
+
+    return 0;
+}
+C_TEMPLATE
+
+# Set up variables.
+executableName="$shortName"
+runCommand="./$shortName < $shortName.$INPUT_TEST_EXT > $shortName.$OUTPUT_TEST_EXT"
+
+fi
+
+
+#--- C++ SETUP -----------------------------------------------------------------
+
+if [ "$language" == "c++" ] || [ "$language" == "cpp" ]
+then
+
+# Create Makefile
+cat <<MAKEFILE_CPP > "./Makefile"
+build: $shortName.cpp
+	g++ -O2 -static -lm -o $shortName $shortName.cpp
+
+debug: $shortName.cpp
+	g++ -DDEBUG -g -o $shortName $shortName.cpp
+MAKEFILE_CPP
+
+# Create cpp file
+cat <<CPP_TEMPLATE > "./$shortName.cpp"
+//
+// $fullName
+//
+
+#include <algorithm>
+#include <cstdio>
+
+using namespace std;
+
+
+int main() {
+
+
+    return 0;
+}
+CPP_TEMPLATE
+
+# Set up variables.
+executableName="$shortName"
+runCommand="./$shortName < $shortName.$INPUT_TEST_EXT > $shortName.$OUTPUT_TEST_EXT"
+
+fi
+
+
+#--- PYTHON 2.* SETUP ----------------------------------------------------------
+
+if [ "$language" == 'python2' ]; then
+
+# Create py file
+cat <<PY_TEMPLATE > "./$shortName.py"
+#! /usr/bin/python2
+# $fullName
+
+from sys import stdin
+
+def main() :
+    
+
+if __name__ == '__main__' :
+    main()
+PY_TEMPLATE
+
+chmod +x "./$shortName.py"
+
+# Set up variables.
+executableName="$shortName.py"
+runCommand="./$shortName.py < $shortName.$INPUT_TEST_EXT > $shortName.$OUTPUT_TEST_EXT"
+
+fi
+
+
+#--- PYTHON 3.* SETUP ----------------------------------------------------------
+
+if [ "$language" == 'python3' ]; then
+
+# Create py file
+cat <<PY_TEMPLATE > "./$shortName.py"
+#! /usr/bin/python3
+# $fullName
+
+from sys import stdin
+
+def main() :
+    
+
+if __name__ == '__main__' :
+    main()
+PY_TEMPLATE
+
+chmod +x "./$shortName.py"
+
+# Set up variables.
+executableName="$shortName.py"
+runCommand="./$shortName.py < $shortName.$INPUT_TEST_EXT > $shortName.$OUTPUT_TEST_EXT"
+
+fi
+
+
+#--- TESTING SCRIPT ------------------------------------------------------------
+
+cat <<TESTING_SCRIPT > "./$TEST_SCRIPT_NAME"
+#! /bin/sh
+
+mainInputFile="./$shortName.$INPUT_TEST_EXT"
+mainOutputFile="./$shortName.$OUTPUT_TEST_EXT"
+
+
+function createBackup() {
+    cp -f "\$mainInputFile" "\$mainInputFile.bak"
+    cp -f "\$mainOutputFile" "\$mainOutputFile.bak"
+}
+
+function removeBackup() {
+    if [ -f "\$mainInputFile.bak" ]; then
+        cp -f "\$mainInputFile.bak" "\$mainInputFile"
+        rm -f "\$mainInputFile.bak"
+    fi
+    if [ -f "\$mainOutputFile.bak" ]; then
+        cp -f "\$mainOutputFile.bak" "\$mainOutputFile"
+        rm -f "\$mainOutputFile.bak"
+    fi
+}
+
+# Calling: runTestCase testName inputFile outputFile
+function runTestCase() {
+    testName="<current>"
+    [ -n "\$1" ] && testName="\$1"
+
+    testInputFile="\$mainInputFile"
+    [ -n "\$2" ] && testInputFile="\$2"
+
+    testOutputFile="\$mainOutputFile"
+    [ -n "\$3" ] && testOutputFile="\$3"
+
+    if [ ! "\$testInputFile" -ef "\$mainInputFile" ]; then
+        cp -f "\$testInputFile" "\$mainInputFile"
+    fi
+
+    echo -n "Test \$testName running... "
+    #/usr/bin/time -f "%e" $runCommand
+    $runCommand
+
+    if [ "\$testOutputFile" -ef "\$mainOutputFile" ]; then
+        echo "DONE"
+        return $SUCCESS
+    elif diff "\$mainOutputFile" "\$testOutputFile" > /dev/null; then
+        echo "PASS"
+        return $SUCCESS
+    else
+        echo "FAIL"
+        return $FAILURE
+    fi
+}
+
+
+trap 'removeBackup;
+      echo "SIGINT received, restoring original I/O files and quitting.";
+      exit $FAILURE;' SIGINT
+
+if [ "\$1" == "--help" ]; then
+    echo "Usage: ./$TEST_SCRIPT_NAME          - Run the current test."
+    echo "       ./$TEST_SCRIPT_NAME TESTNAME - Run a particular test."
+    echo "       ./$TEST_SCRIPT_NAME all      - Run all tests."
+    exit $SUCCESS
+fi
+
+if [ ! -f "$executableName" ]; then
+    echo "Executable does not exist, aborting."
+    exit $FAILURE
+fi
+
+
+if [ "\$#" -eq 0 -o "\$1" != "all" ]; then      # Run single test case.
+    if [ "\$#" -eq 0 ]; then
+        inputFile="\$mainInputFile"
+        outputFile="\$mainOutputFile"
+    elif [ -f "./$TEST_DIR_NAME/\$1.$INPUT_TEST_EXT" -a -f "./$TEST_DIR_NAME/\$1.$OUTPUT_TEST_EXT" ]; then
+        inputFile="./$TEST_DIR_NAME/\$1.$INPUT_TEST_EXT"
+        outputFile="./$TEST_DIR_NAME/\$1.$OUTPUT_TEST_EXT"
+    elif [ -f "./\$1.$INPUT_TEST_EXT" -a -f "./\$1.$OUTPUT_TEST_EXT" ]; then
+        inputFile="./\$1.$INPUT_TEST_EXT"
+        outputFile="./\$1.$OUTPUT_TEST_EXT"
+    else
+        echo "Could find test case \"\$1\"."
+        exit $FAILURE
+    fi
+
+    runTestCase "\$1" "\$inputFile" "\$outputFile"
+
+else        # Run all test cases.
+    testFiles=( \`find $TEST_DIR_NAME -regex '$TEST_DIR_NAME/[^.].*' -type f -print0 \
+                  | xargs -0 -n 1 basename | sed -e 's/\.[^.]*$//g' | sort | uniq \` )
+    testsFailed=0
+
+    echo "Running all tests..."
+
+    createBackup
+    for testCase in \${testFiles[@]}; do
+        inputFile="./$TEST_DIR_NAME/\$testCase.$INPUT_TEST_EXT"
+        outputFile="./$TEST_DIR_NAME/\$testCase.$OUTPUT_TEST_EXT"
+
+        if ! runTestCase "\$testCase" "\$inputFile" "\$outputFile"; then
+            (( testsFailed++ ))
+        fi
+    done
+    removeBackup
+
+    if [ "\$testsFailed" -ne "0" ]; then
+        echo ">> Some tests have failed."
+    else
+        echo ">> All tests passed."
+    fi
+fi
+
+exit $SUCCESS
+TESTING_SCRIPT
+
+chmod +x "./$TEST_SCRIPT_NAME"
+
+
+#--- MERCURIAL REPOSITORY SETUP ------------------------------------------------
+
+if [ "$vcs" == 'hg' ]; then
+
+# Init repo.
+hg init > /dev/null
+
+# Create ignore file.
+cat <<HG_IGNORE > ".hgignore"
+syntax: glob
+
+*~
+*.pyc
+*.s[uvw][a-z]
+Makefile
+$TEST_SCRIPT_NAME
+$executableName
+$shortName.$INPUT_TEST_EXT
+$shortName.$OUTPUT_TEST_EXT
+HG_IGNORE
+
+# Perform initial commit.
+hg add > /dev/null
+hg commit -m 'Initial commit.' > /dev/null
+
+fi
+
+
+#--- GIT REPOSITORY SETUP ------------------------------------------------------
+
+if [ "$vcs" == 'git' ]; then
+
+# Init repo.
+git init > /dev/null
+
+# Create ignore file.
+cat <<GIT_IGNORE > ".gitignore"
+*~
+*.pyc
+*.s[uvw][a-z]
+Makefile
+$TEST_SCRIPT_NAME
+$executableName
+$shortName.$INPUT_TEST_EXT
+$shortName.$OUTPUT_TEST_EXT
+GIT_IGNORE
+
+# Perform initial commit.
+git add -A > /dev/null
+git commit -m 'Initial commit.' > /dev/null
+
+fi
+
+
+#--- CLEAN UP AND FINISH -------------------------------------------------------
+
+exit "$SUCCESS"
