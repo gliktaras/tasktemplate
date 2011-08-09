@@ -164,7 +164,7 @@ fi
 
 #--- C++ SETUP -----------------------------------------------------------------
 
-if [ "$language" == "c++" ] || [ "$language" == "cpp" ]
+if [ "$language" == "c++" -o "$language" == "cpp" ]
 then
 
 # Create Makefile

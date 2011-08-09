@@ -1,7 +1,11 @@
 tasktemplate
 ============
 
-tasktemplate is a very simple script that creates a basic skeleton for an algorithmic task. It generates a skeleton solution file, placeholder input/output files, placeholder test files and a testing script.
+tasktemplate is a very simple script that creates a basic skeleton for an algorithmic task. It generates a skeleton solution file, placeholder input/output files, placeholder test files, a testing script and puts it all into a source code repository of choice.
+
+Supported programming languages: C, C++, Python.
+
+Supported version control systems: git, mercurial.
 
 Installation
 ------------
